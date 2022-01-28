@@ -45,6 +45,7 @@ void ServoHandler::servoRotateTraverse(int val)
 {
 	mServoTr.write(mServoPosTr + val);
 	mServoPosTr += val;
+	mServoPosTr = controlBoundaries(mServoPosTr);
 }
 
 // rotate servo in the elevation direction for "val" degree
@@ -52,6 +53,17 @@ void ServoHandler::servoRotateElevation(int val)
 {
 	mServoEl.write(mServoPosEl + val);
 	mServoPosEl += val;
+	mServoPosEl = controlBoundaries(mServoPosEl);
+}
+
+int ServoHandler::controlBoundaries(int angle)
+{
+	if(angle < 0)
+		return 0;
+	else if(angle > 180)
+		return 180;
+	else
+		return angle;
 }
 
 /* ___important___ info about dummy servos

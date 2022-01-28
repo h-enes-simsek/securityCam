@@ -19,6 +19,7 @@ class ServoHandler
 	void servoRotateElevation(int val);
 
 	private:
+	int controlBoundaries(int angle);
 	Servo mServoDummy1; // only used to occupy pwm channel
 	Servo mServoDummy2; // only used to occupy pwm channel
 	Servo mServoTr;

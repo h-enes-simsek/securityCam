@@ -3,9 +3,15 @@
 #include <HTTPClient.h>
 #include "ServerHandler.h"
 #include "Arduino.h" 		// for delay()
+///#include <WiFiClient.h>
 
 ServerHandler::ServerHandler() : mServer(SERVER_PORT)
 {}
+
+void ServerHandler::addServo(ServoHandler *servo)
+{
+	mServo = servo;
+}
 
 void ServerHandler::connectWifi()
 {
@@ -46,20 +52,20 @@ void ServerHandler::connectWifi()
 	
 	if (MDNS.begin("esp32")) 
 	{
-		SERIAL_PRINTLN("MDNS responder started.");
+		SERIAL_PRINTLN("\nMDNS responder started.");
 	}
 }
 
 void ServerHandler::createServer()
 {
 	// configure urls and responses
-	mServer.on("/", std::bind(&ServerHandler::handleRoot, this)); 
-	mServer.onNotFound(std::bind(&ServerHandler::handleNotFound, this));
+	mServer.on("/control_servo", HTTP_POST, std::bind(&ServerHandler::controlServo, this)); 
+	mServer.onNotFound(std::bind(&ServerHandler::http404, this));
 
 	mServer.begin(); // start server
 	
 	//  lambda function example if needed
-	//  mServer.on("/inline", [this]() {
+	//  mServer.on("/example_uri", [this]() {
     //  	mServer.send(200, "text/plain", "this works as well");
 	//  });
 }
@@ -69,7 +75,7 @@ void ServerHandler::keepServerAlive()
 	mServer.handleClient();
 }
 
-
+/*
 void ServerHandler::doPostRequest(){
   HTTPClient http;
 
@@ -102,22 +108,51 @@ void ServerHandler::doPostRequest(){
 
   http.end();
 }
+*/
 
 
-void ServerHandler::handleRoot() {
-  mServer.send(200, "text/plain", "hello from esp32!");
-
-  //behave as a client
-  doPostRequest();
-
-  //make a rotate for servo (test)
-  //servoHandler.servoRotateTraverse(5); // 5 to clockwise
-  //servoHandler.servoRotateElevation(-5); // 5 to down
+void ServerHandler::controlServo() {
+	bool isDataValid = true;
+	
+	if(mServo != nullptr)
+	{
+		// get data obtained from POST
+		String message = "\n";
+		for (uint8_t i = 0; i < mServer.args(); i++) {
+			String key = mServer.argName(i);
+			String val = mServer.arg(i);
+			message += mServer.argName(i) + ": " + mServer.arg(i) + "\n";
+			try
+			{
+				if(key == "tr")
+					mServo->servoRotateTraverse( val.toInt() ); // toInt return 0 if fails
+				else if(key == "el")
+					mServo->servoRotateElevation( val.toInt() ); // toInt return 0 if fails
+				else 
+					isDataValid = false;
+			}
+			catch(...){
+				isDataValid = false; // stoi failed
+			}
+		}
+		
+		SERIAL_PRINTLN(message);
+		
+		if(isDataValid)
+			mServer.send(200, "text/plain", "Servo control message received and valid.");
+		else
+			mServer.send(400, "text/plain", "Servo control message received but NOT valid."); // bad request
+	}
+	else
+	{
+		SERIAL_PRINTLN("ServerHandler does not have servo.");
+		mServer.send(503, "text/plain", "ServerHandler does not have servo."); // service unavaible
+	}
+  
 }
 
-
-void ServerHandler::handleNotFound() {
-  String message = "File Not Found\n\n";
+void ServerHandler::http404() {
+  String message = "Page Not Found\n\n";
   message += "URI: ";
   message += mServer.uri();
   message += "\nMethod: ";
