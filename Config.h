@@ -2,8 +2,8 @@
 #define Config_H
 
 // Wifi config
-#define WIFI_SSID       "SuperonlineCokSuper24"
-#define WIFI_PASS       "pass92A."
+#define WIFI_SSID       "ssid"
+#define WIFI_PASS       "pass"
 #define USE_STATIC_IP   true                            // true : static_ip, false : dhcp                                                       
                                                         // use following preprocessors when USE_STATIC_IP : true
 #define LOCAL_IP        192, 168, 1, 100                // (optional) request local ip in LAN 
