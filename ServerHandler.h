@@ -1,9 +1,10 @@
 #ifndef ServerHandler_H
 #define ServerHandler_H
 
-#include <WebServer.h> 
+#include <WebServer.h>      // server
 #include "Config.h"
 #include "ServoHandler.h"
+#include <WiFi.h>			// client and to connect wifi 
 
 class ServerHandler
 {
@@ -20,8 +21,12 @@ class ServerHandler
 	void http404();
 	void controlServo();
 	
+	// client
+	void doPostRequest();
+	
 	ServoHandler *mServo; 
 	WebServer mServer;
+	WiFiClient mClient;
 	
 };
 

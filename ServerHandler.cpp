@@ -1,6 +1,6 @@
-#include <WiFi.h>			// to connect wifi
+
 #include <ESPmDNS.h>		// Multicast DNS
-#include <HTTPClient.h>
+//#include <HTTPClient.h>
 #include "ServerHandler.h"
 #include "Arduino.h" 		// for delay()
 ///#include <WiFiClient.h>
@@ -110,30 +110,37 @@ void ServerHandler::doPostRequest(){
 }
 */
 
+void ServerHandler::doPostRequest()
+{
+	IPAddress server(192,168,1,2);
+	if (mClient.connect(server, 5000)) 
+	{
+		SERIAL_PRINT("connected");
+		mClient.println("POST /upload_file?q=arduino HTTP/1.0");
+		mClient.println();
+	}
+}
+
 
 void ServerHandler::controlServo() {
 	bool isDataValid = true;
 	
 	if(mServo != nullptr)
 	{
-		// get data obtained from POST
+		// get data obtained 
+		
 		String message = "\n";
 		for (uint8_t i = 0; i < mServer.args(); i++) {
 			String key = mServer.argName(i);
 			String val = mServer.arg(i);
 			message += mServer.argName(i) + ": " + mServer.arg(i) + "\n";
-			try
-			{
-				if(key == "tr")
-					mServo->servoRotateTraverse( val.toInt() ); // toInt return 0 if fails
-				else if(key == "el")
-					mServo->servoRotateElevation( val.toInt() ); // toInt return 0 if fails
-				else 
-					isDataValid = false;
-			}
-			catch(...){
-				isDataValid = false; // stoi failed
-			}
+			
+			if(key == "tr")
+				mServo->servoRotateTraverse( val.toInt() ); // toInt return 0 if fails
+			else if(key == "el")
+				mServo->servoRotateElevation( val.toInt() ); // toInt return 0 if fails
+			else 
+				isDataValid = false;
 		}
 		
 		SERIAL_PRINTLN(message);
@@ -152,6 +159,7 @@ void ServerHandler::controlServo() {
 }
 
 void ServerHandler::http404() {
+doPostRequest();
   String message = "Page Not Found\n\n";
   message += "URI: ";
   message += mServer.uri();
