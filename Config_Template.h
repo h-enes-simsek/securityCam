@@ -12,7 +12,6 @@
 #define DNS_PRIMARY     8, 8, 8, 8                      // (very optional) set a custom DNS
 #define DNS_SECONDARY   8, 8, 4, 4                      // (very optional) set a custom DNS
 
-
 // Server config
 #define SERVER_PORT     80
 
