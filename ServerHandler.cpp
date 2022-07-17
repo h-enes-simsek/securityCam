@@ -1,4 +1,3 @@
-
 #include <ESPmDNS.h>		// Multicast DNS
 //#include <HTTPClient.h>
 #include "ServerHandler.h"
@@ -66,7 +65,7 @@ void ServerHandler::createServer()
 	
 	//  lambda function example if needed
 	//  mServer.on("/example_uri", [this]() {
-    //  	mServer.send(200, "text/plain", "this works as well");
+  //  	mServer.send(200, "text/plain", "this works as well");
 	//  });
 }
 
@@ -112,12 +111,38 @@ void ServerHandler::doPostRequest(){
 
 void ServerHandler::doPostRequest()
 {
-	IPAddress server(192,168,1,2);
+	IPAddress server(192,168,1,3);
+	String boundary = "abcd123xyz987";
+	String boundaryWithPrefix = "\r\n--" + boundary;
 	if (mClient.connect(server, 5000)) 
 	{
 		SERIAL_PRINT("connected");
-		mClient.println("POST /upload_file?q=arduino HTTP/1.0");
-		mClient.println();
+		//mClient.println("POST /upload_file?q=arduino HTTP/1.1");
+		mClient.println("POST /camera HTTP/1.1");
+		mClient.println("Host: 192.168.1.3:5000");
+		mClient.println("Content-Type: multipart/x-mixed-replace;boundary=" + boundary);
+		mClient.println(boundaryWithPrefix);
+
+
+    mClient.println("Content-Type: image/jpeg\r\nContent-Length: 4\r\n");
+    mClient.println("gghh");
+    mClient.println(boundaryWithPrefix);
+
+    mClient.println("Content-Type: image/jpeg\r\nContent-Length: 4\r\n");
+    mClient.println("ttyyu");
+    mClient.println(boundaryWithPrefix);
+
+    /*
+		int i = 0;
+		String imgSize = "5";
+		char *img = "abcde";
+		while(i < 3 && mClient.connected())
+		{
+			mClient.println("Content-Type: image/jpeg\r\nContent-Length: " + imgSize + "\r\n");
+			mClient.println(boundaryWithPrefix);
+			i = i + 1;
+		}
+   */
 	}
 }
 

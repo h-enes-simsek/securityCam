@@ -4,7 +4,7 @@
 #include <WebServer.h>      // server
 #include "Config.h"
 #include "ServoHandler.h"
-#include <WiFi.h>			// client and to connect wifi 
+//#include <WiFi.h>			// client and to connect wifi, galiba gerekli değil
 
 class ServerHandler
 {
