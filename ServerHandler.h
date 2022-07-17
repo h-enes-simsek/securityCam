@@ -20,7 +20,8 @@ class ServerHandler
 	// server response handlers
 	void http404();
 	void controlServo();
-	
+	void mjpegHandler();
+  
 	// client
 	void doPostRequest();
 	

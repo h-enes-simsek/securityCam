@@ -1,6 +1,9 @@
 #ifndef Config_H
 #define Config_H
 
+// ESP model config (used by CameraPins.h)
+#define CAMERA_MODEL_AI_THINKER
+
 // Wifi config
 #define WIFI_SSID       "ssid"
 #define WIFI_PASS       "pass"

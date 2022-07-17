@@ -59,6 +59,7 @@ void ServerHandler::createServer()
 {
 	// configure urls and responses
 	mServer.on("/control_servo", HTTP_POST, std::bind(&ServerHandler::controlServo, this)); 
+	mServer.on("/mjpeg", HTTP_POST, std::bind(&ServerHandler::mjpegHandler, this)); 
 	mServer.onNotFound(std::bind(&ServerHandler::http404, this));
 
 	mServer.begin(); // start server
@@ -72,6 +73,41 @@ void ServerHandler::createServer()
 void ServerHandler::keepServerAlive()
 {
 	mServer.handleClient();
+}
+
+void ServerHandler::mjpegHandler()
+{
+  const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
+                      "Access-Control-Allow-Origin: *\r\n" \
+                      "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
+  const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
+  const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
+  const int hdrLen = strlen(HEADER);
+  const int bdrLen = strlen(BOUNDARY);
+  const int cntLen = strlen(CTNTTYPE);
+  
+  mClient = mServer.client(); // get current connected client
+  
+  char buf[32];
+  int s;
+
+  mClient.write(HEADER, hdrLen); // return 200 ok
+  mClient.write(BOUNDARY, bdrLen);
+
+  int counter_dummy = 0;
+  while (counter_dummy < 5)
+  {
+    counter_dummy++;
+    if (!mClient.connected()) break;
+    //cam.run();
+    s = 4; /* cam.getSize(); */
+    mClient.write(CTNTTYPE, cntLen);
+    sprintf( buf, "%d\r\n\r\n", s );
+    mClient.write(buf, strlen(buf));
+    //mClient.write((char *)cam.getfb(), s);
+    mClient.write((char *)"abcd", s);
+    mClient.write(BOUNDARY, bdrLen);
+  }
 }
 
 /*
