@@ -6,7 +6,7 @@
 
 #include "esp_camera.h"
 
-ServerHandler::ServerHandler() : mServer(SERVER_PORT)
+ServerHandler::ServerHandler() : mServo(nullptr), mServer(SERVER_PORT)
 {}
 
 void ServerHandler::addServo(ServoHandler *servo)
