@@ -4,6 +4,8 @@
 #include "Arduino.h" 		// for delay()
 ///#include <WiFiClient.h>
 
+#include "esp_camera.h"
+
 ServerHandler::ServerHandler() : mServer(SERVER_PORT)
 {}
 
@@ -58,8 +60,8 @@ void ServerHandler::connectWifi()
 void ServerHandler::createServer()
 {
 	// configure urls and responses
-	mServer.on("/control_servo", HTTP_POST, std::bind(&ServerHandler::controlServo, this)); 
-	mServer.on("/mjpeg", HTTP_POST, std::bind(&ServerHandler::mjpegHandler, this)); 
+	mServer.on("/control_servo", HTTP_ANY, std::bind(&ServerHandler::controlServo, this)); 
+	mServer.on("/mjpeg", HTTP_ANY, std::bind(&ServerHandler::mjpegHandler, this)); 
 	mServer.onNotFound(std::bind(&ServerHandler::http404, this));
 
 	mServer.begin(); // start server
@@ -75,17 +77,18 @@ void ServerHandler::keepServerAlive()
 	mServer.handleClient();
 }
 
+
+const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
+                    "Access-Control-Allow-Origin: *\r\n" \
+                    "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
+const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
+const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
+const int hdrLen = strlen(HEADER);
+const int bdrLen = strlen(BOUNDARY);
+const int cntLen = strlen(CTNTTYPE);
+
 void ServerHandler::mjpegHandler()
 {
-  const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
-                      "Access-Control-Allow-Origin: *\r\n" \
-                      "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
-  const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
-  const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
-  const int hdrLen = strlen(HEADER);
-  const int bdrLen = strlen(BOUNDARY);
-  const int cntLen = strlen(CTNTTYPE);
-  
   mClient = mServer.client(); // get current connected client
   
   char buf[32];
@@ -94,19 +97,38 @@ void ServerHandler::mjpegHandler()
   mClient.write(HEADER, hdrLen); // return 200 ok
   mClient.write(BOUNDARY, bdrLen);
 
-  int counter_dummy = 0;
-  while (counter_dummy < 5)
+  camera_fb_t * fb = NULL;
+
+  int fr_start = esp_timer_get_time();
+  int currenr_fr = 0;
+  while (true)
   {
-    counter_dummy++;
     if (!mClient.connected()) break;
     //cam.run();
-    s = 4; /* cam.getSize(); */
+
+    fb = esp_camera_fb_get();
+    if (!fb) {
+      Serial.println("Camera capture failed");
+      break;
+    }
+    s = fb->len; /* cam.getSize(); */
     mClient.write(CTNTTYPE, cntLen);
     sprintf( buf, "%d\r\n\r\n", s );
     mClient.write(buf, strlen(buf));
     //mClient.write((char *)cam.getfb(), s);
-    mClient.write((char *)"abcd", s);
+    mClient.write((char *)fb->buf, s);
     mClient.write(BOUNDARY, bdrLen);
+
+    esp_camera_fb_return(fb);
+
+    int fr_end = esp_timer_get_time();
+    int fr_time = fr_end - fr_start;
+    currenr_fr++;
+    Serial.print(currenr_fr);
+    Serial.print(" ");
+    Serial.print(fr_time);
+    Serial.print("\n");
+    fr_start = fr_end;
   }
 }
 
