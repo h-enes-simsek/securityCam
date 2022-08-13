@@ -1,10 +1,9 @@
 #ifndef ServerHandler_H
 #define ServerHandler_H
 
-#include <WebServer.h>      // server
+#include "esp_http_server.h"
 #include "Config.h"
 #include "ServoHandler.h"
-//#include <WiFi.h>			// client and to connect wifi, galiba gerekli değil
 
 class ServerHandler
 {
@@ -15,20 +14,8 @@ class ServerHandler
 	void createServer(); // configure, create and start the server
 	void keepServerAlive(); // this method must be called periodically to keep server alive
 	
-	private:
-	
-	// server response handlers
-	void http404();
-	void controlServo();
-	void mjpegHandler();
-  
-	// client
-	void doPostRequest();
-	
 	ServoHandler *mServo; 
-	WebServer mServer;
-	WiFiClient mClient;
-	
+  httpd_handle_t server_httpd;
 };
 
 #endif

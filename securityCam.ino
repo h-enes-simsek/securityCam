@@ -15,8 +15,8 @@ void setup(void) {
 
   // config cam
   camera_config_t config;
-  config.ledc_channel = LEDC_CHANNEL_0; 
-  config.ledc_timer = LEDC_TIMER_0; 
+  config.ledc_channel = LEDC_CHANNEL_1; 
+  config.ledc_timer = LEDC_TIMER_1; 
   config.pin_d0 = Y2_GPIO_NUM;
   config.pin_d1 = Y3_GPIO_NUM;
   config.pin_d2 = Y4_GPIO_NUM;
@@ -36,20 +36,9 @@ void setup(void) {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG; 
 
-  /*
-  if(psramFound()){
-    config.frame_size = FRAMESIZE_UXGA;
-    config.jpeg_quality = 10;
-    config.fb_count = 2;
-  } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
-  }
-  */
-  config.frame_size = FRAMESIZE_SVGA;
-  config.jpeg_quality = 5;
-  config.fb_count = 1;
+  config.frame_size = FRAMESIZE_VGA;
+  config.jpeg_quality = 15;
+  config.fb_count = 2;
   
   // Camera init
   esp_err_t err = esp_camera_init(&config);

@@ -1,13 +1,11 @@
-#include <ESPmDNS.h>		// Multicast DNS
-//#include <HTTPClient.h>
 #include "ServerHandler.h"
 #include "Arduino.h" 		// for delay()
-///#include <WiFiClient.h>
-
 #include "esp_camera.h"
+#include "WiFi.h"
 
-ServerHandler::ServerHandler() : mServo(nullptr), mServer(SERVER_PORT)
+ServerHandler::ServerHandler() : mServo(nullptr), server_httpd(nullptr)
 {}
+// TODO port'U set etmeyi unutma şu an otomatik alıyor
 
 void ServerHandler::addServo(ServoHandler *servo)
 {
@@ -50,162 +48,86 @@ void ServerHandler::connectWifi()
 	SERIAL_PRINT(ssid);
 	SERIAL_PRINT(", IP address: ");
 	SERIAL_PRINT(WiFi.localIP());
-	
-	if (MDNS.begin("esp32")) 
-	{
-		SERIAL_PRINTLN("\nMDNS responder started.");
-	}
-}
-
-void ServerHandler::createServer()
-{
-	// configure urls and responses
-	mServer.on("/control_servo", HTTP_ANY, std::bind(&ServerHandler::controlServo, this)); 
-	mServer.on("/mjpeg", HTTP_ANY, std::bind(&ServerHandler::mjpegHandler, this)); 
-	mServer.onNotFound(std::bind(&ServerHandler::http404, this));
-
-	mServer.begin(); // start server
-	
-	//  lambda function example if needed
-	//  mServer.on("/example_uri", [this]() {
-  //  	mServer.send(200, "text/plain", "this works as well");
-	//  });
 }
 
 void ServerHandler::keepServerAlive()
 {
-	mServer.handleClient();
+	
 }
 
+#define PART_BOUNDARY "123456789000000000000987654321"
+static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
+static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
-const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
-                    "Access-Control-Allow-Origin: *\r\n" \
-                    "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
-const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
-const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
-const int hdrLen = strlen(HEADER);
-const int bdrLen = strlen(BOUNDARY);
-const int cntLen = strlen(CTNTTYPE);
-
-void ServerHandler::mjpegHandler()
-{
-  mClient = mServer.client(); // get current connected client
-  
-  char buf[32];
-  int s;
-
-  mClient.write(HEADER, hdrLen); // return 200 ok
-  mClient.write(BOUNDARY, bdrLen);
-
-  camera_fb_t * fb = NULL;
-
-  int fr_start = esp_timer_get_time();
-  int currenr_fr = 0;
-  while (true)
-  {
-    if (!mClient.connected()) break;
-    //cam.run();
-
-    fb = esp_camera_fb_get();
-    if (!fb) {
-      Serial.println("Camera capture failed");
-      break;
+static esp_err_t mjpegHandler(httpd_req_t *req){
+    camera_fb_t * fb = NULL;
+    esp_err_t res = ESP_OK;
+    size_t _jpg_buf_len;
+    uint8_t * _jpg_buf;
+    char * part_buf[64];
+    static int64_t last_frame = 0;
+    if(!last_frame) {
+        last_frame = esp_timer_get_time();
     }
-    s = fb->len; /* cam.getSize(); */
-    mClient.write(CTNTTYPE, cntLen);
-    sprintf( buf, "%d\r\n\r\n", s );
-    mClient.write(buf, strlen(buf));
-    //mClient.write((char *)cam.getfb(), s);
-    mClient.write((char *)fb->buf, s);
-    mClient.write(BOUNDARY, bdrLen);
 
-    esp_camera_fb_return(fb);
+    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+    if(res != ESP_OK){
+        return res;
+    }
 
-    int fr_end = esp_timer_get_time();
-    int fr_time = fr_end - fr_start;
-    currenr_fr++;
-    Serial.print(currenr_fr);
-    Serial.print(" ");
-    Serial.print(fr_time);
-    Serial.print("\n");
-    fr_start = fr_end;
-  }
+    while(true){
+        fb = esp_camera_fb_get();
+        if (!fb) {
+            ESP_LOGE(TAG, "Camera capture failed");
+            res = ESP_FAIL;
+            break;
+        }
+        if(fb->format != PIXFORMAT_JPEG){
+            bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
+            if(!jpeg_converted){
+                ESP_LOGE(TAG, "JPEG compression failed");
+                esp_camera_fb_return(fb);
+                res = ESP_FAIL;
+            }
+        } else {
+            _jpg_buf_len = fb->len;
+            _jpg_buf = fb->buf;
+        }
+
+        if(res == ESP_OK){
+            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+        }
+        if(res == ESP_OK){
+            size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
+
+            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
+        }
+        if(res == ESP_OK){
+            res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
+        }
+        if(fb->format != PIXFORMAT_JPEG){
+            free(_jpg_buf);
+        }
+        esp_camera_fb_return(fb);
+        if(res != ESP_OK){
+            break;
+        }
+        int64_t fr_end = esp_timer_get_time();
+        int64_t frame_time = fr_end - last_frame;
+        last_frame = fr_end;
+        frame_time /= 1000;
+        ESP_LOGI(TAG, "MJPG: %uKB %ums (%.1ffps)",
+            (uint32_t)(_jpg_buf_len/1024),
+            (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time);
+    }
+
+    last_frame = 0;
+    return res;
 }
 
-/*
-void ServerHandler::doPostRequest(){
-  HTTPClient http;
-
-  SERIAL_PRINT("[HTTP] begin...\n");
-  // configure traged server and url
-  http.begin("http://192.168.1.2:5000/upload_file"); //HTTP
-
-  SERIAL_PRINT("[HTTP] GET...\n");
-  // start connection and send HTTP header
-  //int httpCode = http.GET();
-  int httpCode = http.POST("deneme123");
-
-  // httpCode will be negative on error
-  if(httpCode > 0) {
-      // HTTP header has been send and Server response header has been handled
-      SERIAL_PRINT("[HTTP] GET... code: ");
-	  SERIAL_PRINT(httpCode);
-	  SERIAL_PRINT("\n");
-
-      // file found at server
-      if(httpCode == HTTP_CODE_OK) {
-          String payload = http.getString();
-          SERIAL_PRINTLN(payload);
-      }
-  } else {
-      SERIAL_PRINT("[HTTP] GET... failed, error: ");
-	  SERIAL_PRINT(http.errorToString(httpCode).c_str());
-	  SERIAL_PRINT("\n");
-  }
-
-  http.end();
-}
-*/
-
-void ServerHandler::doPostRequest()
-{
-	IPAddress server(192,168,1,3);
-	String boundary = "abcd123xyz987";
-	String boundaryWithPrefix = "\r\n--" + boundary;
-	if (mClient.connect(server, 5000)) 
-	{
-		SERIAL_PRINT("connected");
-		//mClient.println("POST /upload_file?q=arduino HTTP/1.1");
-		mClient.println("POST /camera HTTP/1.1");
-		mClient.println("Host: 192.168.1.3:5000");
-		mClient.println("Content-Type: multipart/x-mixed-replace;boundary=" + boundary);
-		mClient.println(boundaryWithPrefix);
-
-
-    mClient.println("Content-Type: image/jpeg\r\nContent-Length: 4\r\n");
-    mClient.println("gghh");
-    mClient.println(boundaryWithPrefix);
-
-    mClient.println("Content-Type: image/jpeg\r\nContent-Length: 4\r\n");
-    mClient.println("ttyyu");
-    mClient.println(boundaryWithPrefix);
-
-    /*
-		int i = 0;
-		String imgSize = "5";
-		char *img = "abcde";
-		while(i < 3 && mClient.connected())
-		{
-			mClient.println("Content-Type: image/jpeg\r\nContent-Length: " + imgSize + "\r\n");
-			mClient.println(boundaryWithPrefix);
-			i = i + 1;
-		}
-   */
-	}
-}
-
-
-void ServerHandler::controlServo() {
+static esp_err_t controlServo(httpd_req_t *req){
+	/*
 	bool isDataValid = true;
 	
 	if(mServo != nullptr)
@@ -238,21 +160,46 @@ void ServerHandler::controlServo() {
 		SERIAL_PRINTLN("ServerHandler does not have servo.");
 		mServer.send(503, "text/plain", "ServerHandler does not have servo."); // service unavaible
 	}
-  
+  */
+
+  return ESP_OK;
 }
 
-void ServerHandler::http404() {
-doPostRequest();
-  String message = "Page Not Found\n\n";
-  message += "URI: ";
-  message += mServer.uri();
-  message += "\nMethod: ";
-  message += (mServer.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += mServer.args();
-  message += "\n";
-  for (uint8_t i = 0; i < mServer.args(); i++) {
-    message += " " + mServer.argName(i) + ": " + mServer.arg(i) + "\n";
+void ServerHandler::createServer()
+{
+  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+  httpd_uri_t servo_uri = {
+      .uri       = "/control_servo",
+      .method    = HTTP_GET,
+      .handler   = controlServo,
+      .user_ctx  = NULL
+  };
+
+  httpd_uri_t stream_uri = {
+      .uri       = "/mjpeg",
+      .method    = HTTP_GET,
+      .handler   = mjpegHandler,
+      .user_ctx  = NULL
+  };
+
+  Serial.printf("Starting web server on port: '%d'\n", config.server_port);
+  if (httpd_start(&server_httpd, &config) == ESP_OK) {
+      httpd_register_uri_handler(server_httpd, &servo_uri);
+      httpd_register_uri_handler(server_httpd, &stream_uri);
   }
-  mServer.send(404, "text/plain", message);
+
+  /*
+  // configure urls and responses
+  mServer.on("/control_servo", HTTP_ANY, std::bind(&ServerHandler::controlServo, this)); 
+  mServer.on("/mjpeg", HTTP_ANY, std::bind(&ServerHandler::mjpegHandler, this)); 
+  mServer.onNotFound(std::bind(&ServerHandler::http404, this));
+
+  mServer.begin(); // start server
+  
+  //  lambda function example if needed
+  //  mServer.on("/example_uri", [this]() {
+  //    mServer.send(200, "text/plain", "this works as well");
+  //  });
+ */
 }
