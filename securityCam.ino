@@ -48,7 +48,4 @@ void setup(void) {
   }
 }
 
-void loop(void) {
-  serverHandler.keepServerAlive();
-  delay(2000); //allow the cpu to switch to other tasks
-}
+void loop(void) {}

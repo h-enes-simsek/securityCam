@@ -3,7 +3,9 @@
 #include "esp_camera.h"
 #include "WiFi.h"
 
-ServerHandler::ServerHandler() : mServo(nullptr), server_httpd(nullptr)
+ServoHandler* ServerHandler::mServo = nullptr;
+
+ServerHandler::ServerHandler() : server_httpd(nullptr)
 {}
 // TODO port'U set etmeyi unutma şu an otomatik alıyor
 
@@ -50,17 +52,12 @@ void ServerHandler::connectWifi()
 	SERIAL_PRINT(WiFi.localIP());
 }
 
-void ServerHandler::keepServerAlive()
-{
-	
-}
-
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
-static esp_err_t mjpegHandler(httpd_req_t *req){
+esp_err_t ServerHandler::mjpegHandler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
     esp_err_t res = ESP_OK;
     size_t _jpg_buf_len;
@@ -126,41 +123,70 @@ static esp_err_t mjpegHandler(httpd_req_t *req){
     return res;
 }
 
-static esp_err_t controlServo(httpd_req_t *req){
-	/*
+esp_err_t ServerHandler::controlServo(httpd_req_t *req){
+	
 	bool isDataValid = true;
 	
 	if(mServo != nullptr)
 	{
-		// get data obtained 
+		// get query data
+   
+    size_t buf_len;
+    char buff[50]; // to store query string, example query: tr=360&el=180 (13 char)
+    char keyTr[5] = {0,}; // query string key 'tr'
+    char keyEl[5] = {0,}; // query string key 'el'
+
+    // query string lenght
+    buf_len = httpd_req_get_url_query_len(req) + 1; // +1 for null terminator
+
+    if(buf_len > 1)
+    {
+      if (httpd_req_get_url_query_str(req, buff, buf_len) == ESP_OK) 
+      {
+        if (httpd_query_key_value(buff, "tr", keyTr, sizeof(keyTr)) == ESP_OK &&
+            httpd_query_key_value(buff, "el", keyEl, sizeof(keyEl)) == ESP_OK) 
+        {
+          // ok
+        }
+        else
+        {
+          SERIAL_PRINTLN("Query parameters are invalid.");
+          httpd_resp_send_500(req);
+        }
+      }
+      else
+      {
+        SERIAL_PRINTLN("Obtained query string could not be fetched.");
+        httpd_resp_send_500(req);
+      }
+    }
+    else
+    {
+      SERIAL_PRINTLN("Obtained query string size is zero.");
+      httpd_resp_send_500(req);
+    }
+
+    String keyTrStr(keyTr);
+    String keyElStr(keyEl);
+
+    int tr = keyTrStr.toInt(); // toInt return 0 if fails
+    int el = keyElStr.toInt(); // toInt return 0 if fails
+
+    mServo->servoRotateTraverse(tr); 
+    mServo->servoRotateElevation(el);
 		
-		String message = "\n";
-		for (uint8_t i = 0; i < mServer.args(); i++) {
-			String key = mServer.argName(i);
-			String val = mServer.arg(i);
-			message += mServer.argName(i) + ": " + mServer.arg(i) + "\n";
-			
-			if(key == "tr")
-				mServo->servoRotateTraverse( val.toInt() ); // toInt return 0 if fails
-			else if(key == "el")
-				mServo->servoRotateElevation( val.toInt() ); // toInt return 0 if fails
-			else 
-				isDataValid = false;
-		}
-		
+		String message = "incoming query str: " + String(buff) + "\ntr: " + keyTrStr + " el: " + keyElStr;
 		SERIAL_PRINTLN(message);
 		
-		if(isDataValid)
-			mServer.send(200, "text/plain", "Servo control message received and valid.");
-		else
-			mServer.send(400, "text/plain", "Servo control message received but NOT valid."); // bad request
+    httpd_resp_send(req, "Servo control message received and valid.", HTTPD_RESP_USE_STRLEN);
 	}
 	else
 	{
-		SERIAL_PRINTLN("ServerHandler does not have servo.");
-		mServer.send(503, "text/plain", "ServerHandler does not have servo."); // service unavaible
+		SERIAL_PRINTLN("ServerHandler does not have a servo.");
+    httpd_resp_set_status(req, "HTTP/1.1 Service Unavailable");
+    httpd_resp_send(req, "ServerHandler does not have servo.", HTTPD_RESP_USE_STRLEN);  // service unavailable
+    return ESP_FAIL;
 	}
-  */
 
   return ESP_OK;
 }
@@ -172,14 +198,14 @@ void ServerHandler::createServer()
   httpd_uri_t servo_uri = {
       .uri       = "/control_servo",
       .method    = HTTP_GET,
-      .handler   = controlServo,
+      .handler   = ServerHandler::controlServo,
       .user_ctx  = NULL
   };
 
   httpd_uri_t stream_uri = {
       .uri       = "/mjpeg",
       .method    = HTTP_GET,
-      .handler   = mjpegHandler,
+      .handler   = ServerHandler::mjpegHandler,
       .user_ctx  = NULL
   };
 
@@ -188,18 +214,4 @@ void ServerHandler::createServer()
       httpd_register_uri_handler(server_httpd, &servo_uri);
       httpd_register_uri_handler(server_httpd, &stream_uri);
   }
-
-  /*
-  // configure urls and responses
-  mServer.on("/control_servo", HTTP_ANY, std::bind(&ServerHandler::controlServo, this)); 
-  mServer.on("/mjpeg", HTTP_ANY, std::bind(&ServerHandler::mjpegHandler, this)); 
-  mServer.onNotFound(std::bind(&ServerHandler::http404, this));
-
-  mServer.begin(); // start server
-  
-  //  lambda function example if needed
-  //  mServer.on("/example_uri", [this]() {
-  //    mServer.send(200, "text/plain", "this works as well");
-  //  });
- */
 }
