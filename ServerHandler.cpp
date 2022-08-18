@@ -5,9 +5,11 @@
 
 ServoHandler* ServerHandler::mServo = nullptr;
 
-ServerHandler::ServerHandler() : server_httpd(nullptr)
-{}
-// TODO port'U set etmeyi unutma şu an otomatik alıyor
+ServerHandler::ServerHandler()
+{
+  config = HTTPD_DEFAULT_CONFIG();
+  config.server_port = SERVER_PORT;  
+}
 
 void ServerHandler::addServo(ServoHandler *servo)
 {
@@ -193,8 +195,8 @@ esp_err_t ServerHandler::controlServo(httpd_req_t *req){
 
 void ServerHandler::createServer()
 {
-  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
+  httpd_handle_t server_httpd = nullptr;
+  
   httpd_uri_t servo_uri = {
       .uri       = "/control_servo",
       .method    = HTTP_GET,
@@ -210,7 +212,8 @@ void ServerHandler::createServer()
   };
 
   Serial.printf("Starting web server on port: '%d'\n", config.server_port);
-  if (httpd_start(&server_httpd, &config) == ESP_OK) {
+  if (httpd_start(&server_httpd, &config) == ESP_OK) 
+  {
       httpd_register_uri_handler(server_httpd, &servo_uri);
       httpd_register_uri_handler(server_httpd, &stream_uri);
   }

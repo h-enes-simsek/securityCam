@@ -16,7 +16,7 @@
 #define DNS_SECONDARY   8, 8, 4, 4                      // (very optional) set a custom DNS
 
 // Server config
-#define SERVER_PORT     80
+#define SERVER_PORT     75
 
 // serial connection config (for debug)
 #define BAUD_RATE       115200
