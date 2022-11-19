@@ -59,6 +59,8 @@ static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" 
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
+#define FPS_AVG_SAMPLE_SIZE 10
+
 esp_err_t ServerHandler::mjpegHandler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
     esp_err_t res = ESP_OK;
@@ -66,6 +68,8 @@ esp_err_t ServerHandler::mjpegHandler(httpd_req_t *req){
     uint8_t * _jpg_buf;
     char * part_buf[64];
     static int64_t last_frame = 0;
+    static float fps_avg[FPS_AVG_SAMPLE_SIZE] = {0,}; // to calc average fps
+    static int fps_avg_index = 0; // to calc average fps
     if(!last_frame) {
         last_frame = esp_timer_get_time();
     }
@@ -116,9 +120,26 @@ esp_err_t ServerHandler::mjpegHandler(httpd_req_t *req){
         int64_t frame_time = fr_end - last_frame;
         last_frame = fr_end;
         frame_time /= 1000;
-        ESP_LOGI(TAG, "MJPG: %uKB %ums (%.1ffps)",
+        
+        if(fps_avg_index == FPS_AVG_SAMPLE_SIZE)
+          fps_avg_index = 0;
+        fps_avg[fps_avg_index] = 1000.0 / (uint32_t)frame_time;
+        fps_avg_index++;
+
+        uint32_t fps_sum = 0;
+        float fps_avg_val = 0; 
+        int i;
+        for(i = 0; i < FPS_AVG_SAMPLE_SIZE; i++)
+        {
+          fps_sum += fps_avg[i];
+        }
+        fps_avg_val = (1.0f * fps_sum) / FPS_AVG_SAMPLE_SIZE;
+        
+        
+        ESP_LOGI(TAG, "MJPG: %uKB %ums %.1ffps (%.lf)",
             (uint32_t)(_jpg_buf_len/1024),
-            (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time);
+            (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time,
+            fps_avg_val);
     }
 
     last_frame = 0;
