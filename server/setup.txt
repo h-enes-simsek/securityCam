@@ -1,0 +1,67 @@
+## create virtual env
+cd securityCam/server
+python -m venv VENV_CAM
+activate venv (os dependent)
+pip install -r requirement.txt
+
+# project should be working if ip of the cam is accessible
+# dont forget to set enough buffer size in main.py
+python main.py
+
+## Project can be deployed with nginx and gunicorn.
+
+# cached imgs are problem with nginx and gunicorn. 
+# here is a example nginx conf file that solves caching problem
+cat /etc/nginx/sites-available/cam.hesimsek.com
+server {
+    listen 80;
+    server_name cam.hesimsek.com www.cam.hesimsek.com;
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/cam.gunicorn.sock;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_socket_keepalive on;
+        proxy_redirect off;
+        add_header Last-Modified $date_gmt;
+        add_header Cache-Control 'no-store, no-cache';
+        if_modified_since off;
+        expires off;
+        etag off;
+    }
+}
+
+
+# gunicorn service, notice timeout is important
+cat /etc/systemd/system/cam.gunicorn.service
+[Unit]
+Description=gunicorn daemon for cam
+Requires=cam.gunicorn.socket
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/var/www/cam.hesimsek.com/securityCam/server
+ExecStart=/var/www/cam.hesimsek.com/securityCam/server/VENV_CAM/bin/gunicorn \
+          --access-logfile - \
+          --workers 1 \
+          --bind unix:/run/cam.gunicorn.sock \
+          --timeout 600 \
+          wsgi:app
+
+[Install]
+WantedBy=multi-user.target
+
+# socket example
+cat /etc/systemd/system/cam.gunicorn.socket
+[Unit]
+Description=gunicorn socket for cam
+
+[Socket]
+ListenStream=/run/cam.gunicorn.sock
+
+[Install]
+WantedBy=sockets.target
+
