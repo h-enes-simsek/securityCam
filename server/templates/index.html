@@ -1,0 +1,51 @@
+<html>
+<body style="height:45vw;background: white; display: flex">
+	<div style="display: inline-block; width:auto; height:100%; min-width: 300px; min-height: 300px;">
+		<img style="display: inline-block; width:100%; height:auto;"  src="/mjpeg" />
+	</div>
+  <div style="display: inline-block; width:auto; height:100%; min-width: 300px; min-height: 300px; margin-left:75px;">
+    <div id="joystick" style="display: inline-block; width:auto; height:70%; margin-top:20px">
+      <svg width="100%" height="100%" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(16,16,16);stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgb(240,240,240);stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(240,240,240);stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgb(16,16,16);stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="grad3" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:rgb(168,168,168);stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgb(239,239,239);stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="50" fill="url(#grad1)" />
+        <circle cx="50" cy="50" r="47" fill="url(#grad2)" stroke="black" stroke-width="1.5px" />
+        <circle cx="50" cy="50" r="44" fill="url(#grad3)" />
+        <circle cx="50" cy="50" r="20" fill="#cccccc" stroke="black" stroke-width="1px" onclick="" />
+        <path d="M50,14 54,22 46,22Z" fill="rgba(0,0,0,0.8)" onclick="turn('turnup');" />
+        <path d="M50,86 54,78 46,78Z" fill="rgba(0,0,0,0.8)" onclick="turn('turndown');" />
+        <path d="M14,50 22,54 22,46Z" fill="rgba(0,0,0,0.8)" onclick="turn('turnleft');" />
+        <path d="M86,50 78,54 78,46Z" fill="rgba(0,0,0,0.8)" onclick="turn('turnright');" />
+      </svg>
+    </div>
+  </div>
+</body>
+<script>
+  function turn(direction)
+  {
+    let xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() 
+    {
+      if (xhr.readyState == XMLHttpRequest.DONE) 
+      {
+        console.log("status: " + xhr.status + ", response: " + xhr.responseText);
+      }
+    }
+		xhr.open("POST", "/" + direction, true);
+		xhr.setRequestHeader('Content-Type', 'application/text');
+		xhr.send();
+  }
+</script>
+</html>

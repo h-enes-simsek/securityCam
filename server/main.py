@@ -1,13 +1,15 @@
-from mjpeg.client import MJPEGClient
-from mjpeg.server import MJPEGResponse
-from flask import Flask, Response
-app = Flask(__name__)
+from mjpeg.client import MJPEGClient    # will collect mjpeg frames to its buffer
+from mjpeg.server import MJPEGResponse  # will use collected mjpeg frames
+import requests                         # to make http requests
+from flask import Flask, Response, render_template, jsonify
+app = Flask(__name__, template_folder='templates')
 
 # static ip of the cam
-url="http://123.194.136.153/stream.mjpg"
+cam_mjpeg_url="http://<static_ip>/stream.mjpg"
+cam_servo_url="http://<static_ip>/control_servo"
 
 # Create a new client thread
-client = MJPEGClient(url)
+client = MJPEGClient(cam_mjpeg_url)
 
 # Allocate memory buffers for frames
 # buffer size is important, as long as it is less than required, it will not work
@@ -24,9 +26,33 @@ def relay():
         yield memoryview(buf.data)[:buf.used]
         client.enqueue_buffer(buf)
 
-@app.route('/')
+@app.route('/mjpeg')
 def stream():
     return MJPEGResponse(relay())
+    
+@app.route("/turnleft", methods=['GET', 'POST'])
+def turnLeft():
+    res = requests.get(cam_servo_url + "?tr=-5")
+    return Response(res.text, status=res.status_code)
+    
+@app.route("/turnright", methods=['GET', 'POST'])
+def turnRigth():
+    res = requests.get(cam_servo_url + "?tr=5")
+    return Response(res.text, status=res.status_code)
+
+@app.route("/turnup", methods=['GET', 'POST'])
+def turnUp():
+    res = requests.get(cam_servo_url + "?el=5")
+    return Response(res.text, status=res.status_code)
+    
+@app.route("/turndown", methods=['GET', 'POST'])
+def turnDown():
+    res = requests.get(cam_servo_url + "?el=-5")
+    return Response(res.text, status=res.status_code)
+
+@app.route('/')
+def index():
+    return render_template('index.html', mjpeg_url="mjpeg")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
