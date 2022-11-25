@@ -8,9 +8,9 @@ pip install -r requirement.txt
 # dont forget to set enough buffer size in main.py
 python main.py
 
-## Project can be deployed with nginx and gunicorn.
+## Project can be deployed with nginx and gunicorn. 
 
-# cached imgs are problem with nginx and gunicorn. 
+# cached imgs are problem with nginx. 
 # here is a example nginx conf file that solves caching problem
 cat /etc/nginx/sites-available/cam.hesimsek.com
 server {
@@ -33,10 +33,15 @@ server {
 }
 
 
-# gunicorn service, notice timeout is important
-# worker number determines max client limit, because streaming(x-mixed-replace makes worker busy)
 # my flask server has multiple client support but it causes fps drop. 
 # later, maybe i'll use/write another mjpeg stream lib instead of py-mjpeg
+# gunicorn duplicates flask instances for each worker. And my code has a global jpg producer (mjpeg-client).
+# Becase this global object is duplicated by wsgi, mjpeg-client will be duplicated as well.
+# This means for each video stream, a socket will be opened to esp32 that cannot handle.
+# wsgi should be configured not to duplicate flask instances.
+# --workers 1 will create only one instance. --threads will create threads that shares the global object.
+# thread number will limit the maximum allowed user at a time, because every streaming(x-mixed-replace makes busy) blocks a thread.
+
 cat /etc/systemd/system/cam.gunicorn.service
 [Unit]
 Description=gunicorn daemon for cam
@@ -50,6 +55,8 @@ WorkingDirectory=/var/www/cam.hesimsek.com/securityCam/server
 ExecStart=/var/www/cam.hesimsek.com/securityCam/server/VENV_CAM/bin/gunicorn \
           --access-logfile - \
           --workers 1 \
+          --threads 5 \
+          --worker-class=gthread \
           --bind unix:/run/cam.gunicorn.sock \
           --timeout 600 \
           wsgi:app

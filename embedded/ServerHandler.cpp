@@ -175,18 +175,21 @@ esp_err_t ServerHandler::controlServo(httpd_req_t *req){
         {
           SERIAL_PRINTLN("Query parameters are invalid.");
           httpd_resp_send_500(req);
+          return ESP_FAIL;
         }
       }
       else
       {
         SERIAL_PRINTLN("Obtained query string could not be fetched.");
         httpd_resp_send_500(req);
+        return ESP_FAIL;
       }
     }
     else
     {
       SERIAL_PRINTLN("Obtained query string size is zero.");
       httpd_resp_send_500(req);
+      return ESP_FAIL;
     }
 
     String keyTrStr(keyTr);

@@ -1,7 +1,7 @@
 from mjpeg.client import MJPEGClient    # will collect mjpeg frames to its buffer
 from mjpeg.server import MJPEGResponse  # will use collected mjpeg frames
 import requests                         # to make http requests
-from flask import Flask, Response, render_template, jsonify,  stream_with_context
+from flask import Flask, Response, render_template, jsonify, stream_with_context, make_response
 app = Flask(__name__, template_folder='templates')
 
 # static ip of the cam
@@ -26,6 +26,13 @@ def relay():
         buf = client.dequeue_buffer()
         yield memoryview(buf.data)[:buf.used]
         client.enqueue_buffer(buf)
+
+# number of active video watcher
+# if this counter counts wrong, it might indicate deployment problem.   
+@app.route('/counter')
+def summary():
+    global number_of_active_request
+    return make_response(jsonify(number_of_active_request-1), 200) # -1 because of this request
 
 @app.route('/mjpeg')
 def stream():
