@@ -1,6 +1,6 @@
 # Arduino Project for DIY Security Camera with ESP32
 
-# Installation
+## Installation
 
 Target MCU is ESP32-CAM from Ai-Thinker.
 
@@ -9,7 +9,7 @@ The project includes the library [ESP32Servo](https://github.com/jkb-git/ESP32Se
 Create Config.h file with desired configurations by looking Config_Template.h file.
 You need to set a static local ip if you want to access the esp32 from internet, not only from your local network.
 
-# Features
+## Features
 
 Following HTTP Requests (GET) are defined:
 
