@@ -4,10 +4,10 @@
 #include <ESP32Servo.h>
 
 // pinout config for esp32 cam ai-thinker
-#define SERVO_EL_PIN	2    // IO2, for elevation
-#define SERVO_TR_PIN 	4 	 // IO4, for traverse
-#define DUMMY_PIN_1		6    // dummy pin to attach unused servo (to occupy pwm channel)
-#define DUMMY_PIN_2		8    // dummy pin to attach unused servo (to occupy pwm channel)
+#define SERVO_EL_PIN	14   // IO14, for elevation
+#define SERVO_TR_PIN 	15 	 // IO15, for traverse
+#define DUMMY_PIN_1		2    // dummy pin to attach unused servo (to occupy pwm channel)
+#define DUMMY_PIN_2		13   // dummy pin to attach unused servo (to occupy pwm channel)
 
 // This wrapper class handles 2-axis servo motors.
 class ServoHandler 

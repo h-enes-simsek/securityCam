@@ -2,14 +2,14 @@
 
 ServoHandler::ServoHandler()
 {	
+  // attach it but do not use dummy servos, because these pwm channels will be use used by camera
+  mServoDummy1.attach(DUMMY_PIN_1, 1000, 2000); // dummy numbers are used
+  mServoDummy2.attach(DUMMY_PIN_2, 1000, 2000); // dummy numbers are used
+  
 	// min max values should be configured for servo motor (in msec, pwm width)
 	// for sg90, 400-2400 provides about 160 deg. (but actually it should be 180 deg according to servo documentation)
 	mServoTr.attach(SERVO_TR_PIN, 400, 2400);
 	mServoEl.attach(SERVO_EL_PIN, 400, 2400);
-	
-	// attach it but do not use dummy servos, because these pwm channels will be use used by camera
-	mServoDummy1.attach(DUMMY_PIN_1, 1000, 2000); // dummy numbers are used
-	mServoDummy2.attach(DUMMY_PIN_2, 1000, 2000); // dummy numbers are used
 	
 	// initial position for servos (in degree)
 	mServoPosTr = 90;
@@ -22,14 +22,16 @@ ServoHandler::ServoHandler()
 
 ServoHandler::ServoHandler(int minInMsec, int maxInMsec, int initialTr, int initialEl)
 {	
+  
+  // attach it but do not use dummy servos, because these pwm channels will be use used by camera
+  mServoDummy1.attach(DUMMY_PIN_1, 1000, 2000); // dummy numbers are used
+  mServoDummy2.attach(DUMMY_PIN_2, 1000, 2000); // dummy numbers are used
+	
 	// min max values should be configured for servo motor (in msec, pwm width)
 	// for sg90, 400-2400 provides about 160 deg. (but actually it should be 180 deg according to servo documentation)
 	mServoTr.attach(SERVO_TR_PIN, minInMsec, maxInMsec);
 	mServoEl.attach(SERVO_EL_PIN, minInMsec, maxInMsec);
-	
-	// attach it but do not use dummy servos, because these pwm channels will be use used by camera
-	mServoDummy1.attach(DUMMY_PIN_1, 1000, 2000); // dummy numbers are used
-	mServoDummy2.attach(DUMMY_PIN_2, 1000, 2000); // dummy numbers are used
+
 	
 	// initial position for servos (in degree)
 	mServoPosTr = initialTr;
