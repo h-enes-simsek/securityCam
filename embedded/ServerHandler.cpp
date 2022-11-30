@@ -7,8 +7,13 @@ ServoHandler* ServerHandler::mServo = nullptr;
 
 ServerHandler::ServerHandler()
 {
-  config = HTTPD_DEFAULT_CONFIG();
-  config.server_port = SERVER_PORT;  
+  config_stream = HTTPD_DEFAULT_CONFIG();
+  config_stream.server_port = SERVER_STREAM_PORT;
+  config_stream.ctrl_port = 5000;
+
+  config_servo = HTTPD_DEFAULT_CONFIG();
+  config_servo.server_port = SERVER_SERVO_PORT;
+  config_servo.ctrl_port = 5001;
 }
 
 void ServerHandler::addServo(ServoHandler *servo)
@@ -219,7 +224,8 @@ esp_err_t ServerHandler::controlServo(httpd_req_t *req){
 
 void ServerHandler::createServer()
 {
-  httpd_handle_t server_httpd = nullptr;
+  httpd_handle_t server_stream_httpd = nullptr;
+  httpd_handle_t server_servo_httpd = nullptr;
   
   httpd_uri_t servo_uri = {
       .uri       = "/control_servo",
@@ -235,10 +241,13 @@ void ServerHandler::createServer()
       .user_ctx  = NULL
   };
 
-  Serial.printf("Starting web server on port: '%d'\n", config.server_port);
-  if (httpd_start(&server_httpd, &config) == ESP_OK) 
+  Serial.printf("Starting web server on port: '%d'\n", config_stream.server_port);
+  if (httpd_start(&server_stream_httpd, &config_stream) == ESP_OK) 
   {
-      httpd_register_uri_handler(server_httpd, &servo_uri);
-      httpd_register_uri_handler(server_httpd, &stream_uri);
+      httpd_register_uri_handler(server_stream_httpd, &stream_uri);
+  }
+  if (httpd_start(&server_servo_httpd, &config_servo) == ESP_OK) 
+  {
+      httpd_register_uri_handler(server_servo_httpd, &servo_uri);
   }
 }

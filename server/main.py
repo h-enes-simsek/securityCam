@@ -5,8 +5,8 @@ from flask import Flask, Response, render_template, jsonify, stream_with_context
 app = Flask(__name__, template_folder='templates')
 
 # static ip of the cam
-g_cam_mjpeg_url="http://123.194.136.153/stream.mjpg"
-g_cam_servo_url="http://google.com"
+g_cam_mjpeg_url="http://ip-address:80/stream.mjpg"
+g_cam_servo_url="http://ip-address:81/control_servo"
 
 # only one MJPEGClient should exist
 is_MJPEG_Client_Exist = False     

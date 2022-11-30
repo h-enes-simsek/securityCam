@@ -18,7 +18,8 @@ class ServerHandler
   static ServoHandler *mServo; 
 
   private:
-  httpd_config_t config;
+  httpd_config_t config_stream;
+  httpd_config_t config_servo;
 };
 
 #endif
