@@ -41,25 +41,25 @@ def stream():
 @app.route("/turnleft", methods=['GET', 'POST'])
 def turnLeft():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?tr=-5")
+    res = requests.get(g_cam_servo_url + "?tr=5&el=0")
     return Response(res.text, status=res.status_code)
     
 @app.route("/turnright", methods=['GET', 'POST'])
 def turnRigth():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?tr=5")
+    res = requests.get(g_cam_servo_url + "?tr=-5&el=0")
     return Response(res.text, status=res.status_code)
 
 @app.route("/turnup", methods=['GET', 'POST'])
 def turnUp():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?el=5")
+    res = requests.get(g_cam_servo_url + "?tr=0&el=-5")
     return Response(res.text, status=res.status_code)
     
 @app.route("/turndown", methods=['GET', 'POST'])
 def turnDown():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?el=-5")
+    res = requests.get(g_cam_servo_url + "?tr=0&el=5")
     return Response(res.text, status=res.status_code)
 
 @app.route('/')
