@@ -2,7 +2,7 @@ from mjpeg.client import MJPEGClient    # will collect mjpeg frames to its buffe
 from mjpeg.server import MJPEGResponse  # will use collected mjpeg frames
 import requests                         # to make http requests
 from flask import Flask, Response, render_template, jsonify, stream_with_context, make_response
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder='templates', static_url_path="", static_folder="templates/static")
 
 # static ip of the cam
 g_cam_mjpeg_url="http://ip-address:80/mjpeg"
