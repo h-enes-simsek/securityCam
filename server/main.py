@@ -6,16 +6,20 @@ from flask import Flask, Response, render_template, jsonify, stream_with_context
 from flask_httpauth import HTTPBasicAuth                                    # for basic auth
 from werkzeug.security import generate_password_hash, check_password_hash   # for basic auth
 
+import environ                          # to make settings configurable
+
+# read .env file
+env = environ.Env()
+environ.Env.read_env()
 
 app = Flask(__name__, template_folder='templates', static_url_path="", static_folder="templates/static")
 auth = HTTPBasicAuth()
 
 # created accounts
-users = {
-    "admin": generate_password_hash("longNicePass"),
-    "admin2": generate_password_hash("longNicePass2")
-}
-
+users = {}
+users[env("HTTP_AUTH_USERNAME")] = generate_password_hash(env("HTTP_AUTH_PASSWORD"))
+print(users)
+print(type(env("HTTP_AUTH_PASSWORD")))
 
 @auth.verify_password
 def verify_password(username, password):
@@ -23,8 +27,8 @@ def verify_password(username, password):
         return username
 
 # static ip of the cam
-g_cam_mjpeg_url="http://192.168.1.100/mjpeg"
-g_cam_servo_url="http://192.168.1.100:81/control_servo"
+g_cam_mjpeg_url = env("CAM_URL")
+g_cam_servo_url = env("SERVO_URL") 
 
 # only one MJPEGClient should exist
 is_MJPEG_Client_Exist = False     
