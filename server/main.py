@@ -2,11 +2,29 @@ from mjpeg.client import MJPEGClient    # will collect mjpeg frames to its buffe
 from mjpeg.server import MJPEGResponse  # will use collected mjpeg frames
 import requests                         # to make http requests
 from flask import Flask, Response, render_template, jsonify, stream_with_context, make_response
+
+from flask_httpauth import HTTPBasicAuth                                    # for basic auth
+from werkzeug.security import generate_password_hash, check_password_hash   # for basic auth
+
+
 app = Flask(__name__, template_folder='templates', static_url_path="", static_folder="templates/static")
+auth = HTTPBasicAuth()
+
+# created accounts
+users = {
+    "admin": generate_password_hash("longNicePass"),
+    "admin2": generate_password_hash("longNicePass2")
+}
+
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and check_password_hash(users.get(username), password):
+        return username
 
 # static ip of the cam
-g_cam_mjpeg_url="http://ip-address:80/mjpeg"
-g_cam_servo_url="http://ip-address:81/control_servo"
+g_cam_mjpeg_url="http://192.168.1.100/mjpeg"
+g_cam_servo_url="http://192.168.1.100:81/control_servo"
 
 # only one MJPEGClient should exist
 is_MJPEG_Client_Exist = False     
@@ -35,43 +53,66 @@ def summary():
     return make_response(jsonify(number_of_active_request-1), 200) # -1 because of this request
 
 @app.route('/mjpeg')
+@auth.login_required
 def stream():
     return MJPEGResponse(relay())
     
 @app.route("/turnleft", methods=['GET', 'POST'])
+@auth.login_required
 def turnLeft():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?tr=5&el=0")
-    return Response(res.text, status=res.status_code)
+    try:
+        res = requests.get(g_cam_servo_url + "?tr=5&el=0")
+        return Response(res.text, status=res.status_code)
+    except Exception as e:
+        print(e)
+        return Response(status=500)
+    
     
 @app.route("/turnright", methods=['GET', 'POST'])
+@auth.login_required
 def turnRigth():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?tr=-5&el=0")
-    return Response(res.text, status=res.status_code)
+    try:
+        res = requests.get(g_cam_servo_url + "?tr=-5&el=0")
+        return Response(res.text, status=res.status_code)
+    except Exception as e:
+        print(e)
+        return Response(status=500)
 
 @app.route("/turnup", methods=['GET', 'POST'])
+@auth.login_required
 def turnUp():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?tr=0&el=-5")
-    return Response(res.text, status=res.status_code)
+    try:
+        res = requests.get(g_cam_servo_url + "?tr=0&el=-5")
+        return Response(res.text, status=res.status_code)
+    except Exception as e:
+        print(e)
+        return Response(status=500)
     
 @app.route("/turndown", methods=['GET', 'POST'])
+@auth.login_required
 def turnDown():
     global g_cam_servo_url
-    res = requests.get(g_cam_servo_url + "?tr=0&el=5")
-    return Response(res.text, status=res.status_code)
+    try:
+        res = requests.get(g_cam_servo_url + "?tr=0&el=5")
+        return Response(res.text, status=res.status_code)
+    except Exception as e:
+        print(e)
+        return Response(status=500)
 
 @app.route('/')
+@auth.login_required
 def index():
     return render_template('index.html', mjpeg_url="mjpeg")
-    
+
 # register a function to run before each request. 
 @app.before_request
 def start_stream():
     global client, is_MJPEG_Client_Exist, number_of_active_request, g_cam_mjpeg_url
     number_of_active_request += 1 
-    if not(is_MJPEG_Client_Exist):
+    if (is_MJPEG_Client_Exist == False):
         is_MJPEG_Client_Exist = True
         print("new MJPEGClient thread")
         
@@ -91,7 +132,7 @@ def end_stream(exc):
     global client, is_MJPEG_Client_Exist, number_of_active_request
     #print("Teardown {0!r}".format(exc))
     number_of_active_request -= 1 
-    if(number_of_active_request == 0):
+    if(number_of_active_request == 0 and is_MJPEG_Client_Exist == True):
         # there is no active video consumer client, MJPEGClient might stop to prevent unncessary bandwidth consumption
         client.stop()
         is_MJPEG_Client_Exist = False
