@@ -2,6 +2,7 @@
 #include "Arduino.h" 		// for delay()
 #include "esp_camera.h"
 #include "WiFi.h"
+#include <esp_wifi.h> // esp_wifi_set_ps()
 
 ServoHandler* ServerHandler::mServo = nullptr;
 
@@ -27,6 +28,11 @@ void ServerHandler::connectWifi()
 	const char* password = WIFI_PASS;
 	
 	WiFi.mode(WIFI_STA); // connect Access Point(AP)
+
+
+  // important: disable automatically sleeping wifi mode (disable power save mode)
+  // it will increase the current consumption but also prevent periodic freezes during tranmission
+  esp_wifi_set_ps(WIFI_PS_NONE);
 	
 	#if USE_STATIC_IP
 		IPAddress local_IP(LOCAL_IP);
